@@ -26,11 +26,11 @@ exports.register = function (server, options, next) {
   server.plugins.icecreambar = server.plugins.icecreambar || {};
   server.plugins.icecreambar[scope || 'default'] = rollbar;
 
-  server.on('request-error', function internalError (request, error) {
-
-    if (!pathIsRelevant(request.route.path)) { return; }
-    rollbar.handleError(error, exports.relevantProperties(request));
-  });
+//  server.on('request-error', function internalError (request, error) {
+//
+//    if (!pathIsRelevant(request.route.path)) { return; }
+//    rollbar.handleError(error, exports.relevantProperties(request));
+//  });
 
   // events logged with server.log()
   server.on('log', function (event, tags) {
@@ -74,14 +74,15 @@ exports.register = function (server, options, next) {
     if (isBoom) {
 
       // don't duplicate server.on('request-error', ...)
-      const responseIsNot5xx = (response.output.statusCode < 500) || (response.output.statusCode > 599);
-      const omittedResponseCodes = options.omittedResponseCodes || [];
-      const doNotIgnoreThisResponseCode = omittedResponseCodes.indexOf(response.output.statusCode) === -1;
-      const shouldHandleError = responseIsNot5xx && doNotIgnoreThisResponseCode;
+//      const responseIsNot5xx = (response.output.statusCode < 500) || (response.output.statusCode > 599);
+//      const omittedResponseCodes = options.omittedResponseCodes || [];
+//      const doNotIgnoreThisResponseCode = omittedResponseCodes.indexOf(response.output.statusCode) === -1;
+//      const shouldHandleError = responseIsNot5xx && doNotIgnoreThisResponseCode;
+      const shouldHandleError = true;
 
       if (shouldHandleError) {
         // submit error
-        rollbar.handleError(response, exports.relevantProperties(request), function(/*er1*/) {
+        rollbar.handleErrorWithPayloadData(response, exports.relevantProperties(request), function(/*er1*/) {
 
           // log er1 to STDERR to bring attention to the rollbar failure
           // if (er1) { console.error(er1); }
@@ -97,10 +98,20 @@ exports.register = function (server, options, next) {
 
 exports.relevantProperties = function(request) {
   return {
+    ip: request.info.remoteAddress,
     headers: request.headers,
     url: request.path,
     method: request.method,
-    body: request.payload
+    protocol: request.connection.info.protocol,
+    body: request.payload,
+    payload: {
+      error: request.response.output.payload.error,
+      statusCode: request.response.output.payload.statusCode,
+      message: request.response.output.payload.message
+    },
+    route: {
+      path: request.route.path
+    }
   };
 };
 
